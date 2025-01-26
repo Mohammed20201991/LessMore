@@ -166,24 +166,26 @@ Note that we do not provide the data set itself, but merely the structure outlin
 from our paper. (As an exception we provide rendered depth images for [7scenes](https://heidata.uni-heidelberg.de/api/access/datafile/:persistentId?persistentId=doi:10.11588/data/N07HKC/4PLEEJ), [cambridge](https://heidata.uni-heidelberg.de/api/access/datafile/:persistentId?persistentId=doi:10.11588/data/EGCMUU/7LBIQJ)). 
 Our code assumes the following data structure:
 
-1. `dataset`
-2. `dataset\scene`
-3. `dataset\scene\training`
-4. `dataset\scene\training\depth`
-5. `dataset\scene\training\rgb`
-6. `dataset\scene\training\poses`
-7. `dataset\scene\test`
-8. `dataset\scene\test\depth`
-9. `dataset\scene\test\rgb`
-10. `dataset\scene\test\poses`
-11. `dataset\scene\default.config`
-12. `dataset\scene\Entropy.lua`
-13. `dataset\scene\MyL1Criterion.lua`
-14. `dataset\scene\score_incount_ec6.lua`
-15. `dataset\scene\train_obj.lua`
-16. `dataset\scene\train_obj_e2e.lua`
-17. `dataset\scene\train_obj_nomodel.lua`
-18. `dataset\scene\train_obj_nomodel.lua`
+```
+dataset/
+├── scene/
+│   ├── training/
+│   │   ├── depth/
+│   │   ├── rgb/
+│   │   └── poses/
+│   ├── test/
+│   │   ├── depth/
+│   │   ├── rgb/
+│   │   └── poses/
+│   ├── default.config
+│   ├── Entropy.lua
+│   ├── MyL1Criterion.lua
+│   ├── score_incount_ec6.lua
+│   ├── train_obj.lua
+│   ├── train_obj_e2e.lua
+│   └── train_obj_nomodel.lua
+
+```
 
 For example `dataset` could be 7Scenes and `scene` could be Chess. 
 Folders 3-10 should be filled with the associated files from the data set, i.e. RGB frames, depth frames and pose files (7Scenes convention) according to the training/test split. 
@@ -200,18 +202,60 @@ You find the rendered depth images we used for training with a 3D model here: [7
 
 The following calls assume you are within `core/build/dataset/scene` and the binaries lie in `core/build`.
 
-*When training with depth images:*
+# Training and Testing Pipeline
 
-1. `../../train_obj -oscript train_obj.lua`
-2. `../../train_repro -oscript train_obj.lua -omodel obj_model_fcn_init.net`
-3. `../../train_ransac -oscript train_obj_e2e.lua -omodel obj_model_fcn_repro.net -sscript score_incount_ec6.lua`
-4. `../../test_ransac -oscript train_obj.lua -omodel obj_model_fcn_e2e.net -sscript score_incount_ec6.lua -rdraw 0`
+## **Assumptions**
+- You are within the directory: `core/build/dataset/scene`.
+- The binaries are located in: `core/build`.
 
-*When training without depth images:*
+---
 
-1. `../../train_obj -oscript train_obj_nomodel.lua -iSS 20 -cd 3` (for outdor scenes we used `-cd 10`)
-2. `../../train_repro -oscript train_obj_nomodel.lua -omodel obj_model_fcn_init_nomodel.net`
-3. `../../train_ransac -oscript train_obj_e2e_nomodel.lua -omodel obj_model_fcn_repro_nomodel.net -sscript score_incount_ec6.lua`
-4. `../../test_ransac -oscript train_obj.lua -omodel obj_model_fcn_e2e_nomodel.net -sscript score_incount_ec6.lua -rdraw 0`
+## **Training with Depth Images**
 
-Note that you can test the pipeline after each training step (1-3) by providing the appropriate model file to `test_ransac`.
+1. **Train Object Model**:
+   ```bash
+   ../../train_obj -oscript train_obj.lua
+   ```
+2. **Train Reprojection Model**:
+   ```bash
+   ../../train_repro -oscript train_obj.lua -omodel obj_model_fcn_init.net
+   ```
+3. **Train RANSAC Model**:
+   ```bash
+   ../../train_ransac -oscript train_obj_e2e.lua -omodel obj_model_fcn_repro.net -sscript score_incount_ec6.lua
+   ```
+4. **Test RANSAC Model**:
+   ```bash
+   ../../test_ransac -oscript train_obj.lua -omodel obj_model_fcn_e2e.net -sscript score_incount_ec6.lua -rdraw 0
+   ```
+
+---
+
+## **Training Without Depth Images**
+
+1. **Train Object Model** (using nominal model script):
+   ```bash
+   ../../train_obj -oscript train_obj_nomodel.lua -iSS 20 -cd 3
+   ```
+   - For outdoor scenes, use `-cd 10`.
+2. **Train Reprojection Model**:
+   ```bash
+   ../../train_repro -oscript train_obj_nomodel.lua -omodel obj_model_fcn_init_nomodel.net
+   ```
+3. **Train RANSAC Model**:
+   ```bash
+   ../../train_ransac -oscript train_obj_e2e_nomodel.lua -omodel obj_model_fcn_repro_nomodel.net -sscript score_incount_ec6.lua
+   ```
+4. **Test RANSAC Model**:
+   ```bash
+   ../../test_ransac -oscript train_obj.lua -omodel obj_model_fcn_e2e_nomodel.net -sscript score_incount_ec6.lua -rdraw 0
+   ```
+
+---
+
+## **Notes**
+
+- You can test the pipeline after **each training step** (steps 1-3) by providing the appropriate model file to the `test_ransac` command.
+- Adjust `-cd` based on scene type:
+  - Indoor: `-cd 3`.
+  - Outdoor: `-cd 10`.
